@@ -1,0 +1,9 @@
+# Keep generated build files out of Git.
+/build/
+/build-*/
+
+# Local editor settings and operating-system files.
+/.vscode/
+/.idea/
+.DS_Store
+Thumbs.db
