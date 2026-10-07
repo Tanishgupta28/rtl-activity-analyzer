@@ -5,17 +5,54 @@ power-analysis workflows. It does not perform professional RTL power analysis.
 
 RTL means **register-transfer level**, a way to describe digital hardware.
 For this project, a digital signal has a value of **0** or **1**. A **trace**
-records the values of several signals at successive samples. Later stages will
-explore switching activity: how often these values change.
+records the values of several signals at successive samples. The program now
+measures switching activity: how often these sampled values change.
 
-## Current functionality: Stage 1
+## Current functionality: Stage 2
 
-The program reads a CSV trace, validates it, and prints the number of samples,
-the number of signals, and their names. It stores the cycle numbers and all
-signal values in memory. It stops with an understandable error if the input
-is invalid.
+Stage 1 reads and validates a CSV trace, storing the cycle numbers and signal
+values in memory. Its input rules and error handling are preserved.
 
-Stage 1 performs parsing only. Activity and power calculations are future work.
+Stage 2 compares consecutive values for each signal. It prints the sample and
+signal counts, then a table of total, rising, and falling transitions and the
+activity ratio. Signals stay in CSV header order; they are not ranked or sorted.
+
+The activity ratio is an educational, simplified sampled activity metric. It
+is not a complete professional RTL power model, and no power is calculated.
+
+## Understanding transitions and activity
+
+A **transition**, also called a **toggle**, happens when a signal changes between
+two consecutive samples:
+
+- `0 -> 0` and `1 -> 1`: no transition.
+- `0 -> 1`: a **rising transition**.
+- `1 -> 0`: a **falling transition**.
+
+The **total transition count** is the number of these changes. For binary
+signals, it always equals the rising count plus the falling count.
+
+For example, `0 0 1 1 0 1` has three transitions: two rising and one falling.
+Six samples provide five adjacent pairs that could contain transitions. This
+project defines:
+
+```text
+activity_ratio = transitions / (samples - 1)
+```
+
+For this example, `3 / 5 = 0.6`. A constant signal has activity `0.0`; a signal
+that changes at every adjacent pair has activity `1.0`. The code uses
+floating-point division so fractions are preserved.
+
+With only one sample there are no pairs to compare. All transition counts and
+the activity ratio remain zero, and the program skips division to avoid
+dividing by zero. This exception is part of the project's definition.
+
+The analyzer starts at sample index `1` and compares each value with the value
+at index `sample_index - 1`. It counts each change and its direction, then
+computes the ratio. It takes the validated trace by `const` reference, so it
+does not copy or modify the input. Each `SignalActivity` result starts with
+zero counts and a ratio of `0.0`.
 
 ## Project structure
 
@@ -26,9 +63,11 @@ rtl-activity-analyzer/
 ├── .gitignore
 ├── include/
 │   ├── TraceData.h
-│   └── TraceParser.h
+│   ├── TraceParser.h
+│   └── ActivityAnalyzer.h
 ├── src/
 │   ├── TraceParser.cpp
+│   ├── ActivityAnalyzer.cpp
 │   └── main.cpp
 └── data/
     └── sample_trace.csv
@@ -38,7 +77,10 @@ rtl-activity-analyzer/
 - `TraceData.h` defines the data stored using standard-library vectors.
 - `TraceParser.h` declares the parser's public `parse` function.
 - `TraceParser.cpp` reads and validates the CSV file.
-- `main.cpp` handles command-line arguments and prints results or errors.
+- `ActivityAnalyzer.h` defines `SignalActivity` and declares `analyze`.
+- `ActivityAnalyzer.cpp` counts transitions and computes activity ratios.
+- `main.cpp` handles arguments, runs parsing and analysis, and prints results
+  or errors. Ratios are displayed with three decimal places.
 - `sample_trace.csv` is a small example with six samples and four signals.
 - `.gitignore` keeps generated build files and local editor settings out of Git.
 
@@ -76,11 +118,12 @@ Trace loaded successfully
 Samples: 6
 Signals: 4
 
-Signals:
-clk
-enable
-data_valid
-busy
+Switching Activity
+Signal            Transitions  Rising  Falling  Activity
+clk               5            3       2        1.000
+enable            2            1       1        0.400
+data_valid        2            1       1        0.400
+busy              1            1       0        0.200
 ```
 
 The command accepts exactly one file path. Use quotes around a path containing
@@ -134,23 +177,33 @@ For example, `signal_names[0]` is `clk`, `cycles[2]` is `2`, and
 - Only binary values are supported; unknown (`X`) and high-impedance (`Z`)
   states are unsupported.
 - Cycle numbers are sample labels, not physical timestamps. Their order and
-  uniqueness are not checked; rows are stored in file order.
+  uniqueness are not checked; rows are compared in file order. Gaps between
+  cycle numbers do not change the denominator: it is still `samples - 1`.
 - The entire trace is stored in memory.
-- There is no transition counting, switching-activity calculation, signal
-  ranking, power estimation, VCD parsing, visualization, or multithreading.
-- There is no automated test suite yet; Stage 1 is checked by running the
-  command manually with valid and invalid files.
+- The ratio describes changes between recorded samples; it cannot measure
+  changes that happen between those samples.
+- There is no signal ranking, power estimation, VCD parsing, visualization,
+  or multithreading.
+- There is no automated test suite yet. Verification uses manual runs with
+  the sample, constant signals, alternating signals, a single sample, multiple
+  signals, and invalid CSV inputs.
 
-## Roadmap: NOT IMPLEMENTED
+## Roadmap
 
-Each item below is a possible later learning stage, not current functionality:
+Implemented:
 
-- Transition counting — **NOT IMPLEMENTED**
-- Switching activity — **NOT IMPLEMENTED**
+- CSV parsing — **IMPLEMENTED**
+- Transition counting, including rising and falling transitions — **IMPLEMENTED**
+- Simplified switching activity calculation — **IMPLEMENTED**
+
+Possible future learning stages:
+
 - Signal ranking — **NOT IMPLEMENTED**
 - Simple relative power estimation — **NOT IMPLEMENTED**
 - Automated tests — **NOT IMPLEMENTED**
+- VCD parsing — **NOT IMPLEMENTED**
 - Optional visualization — **NOT IMPLEMENTED**
+- Multithreading — **NOT IMPLEMENTED**
 
 ## Git and GitHub basics
 
