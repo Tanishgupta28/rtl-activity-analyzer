@@ -8,5 +8,6 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 add_executable(rtl_activity_analyzer
     src/main.cpp
     src/TraceParser.cpp
+    src/ActivityAnalyzer.cpp
 )
 target_include_directories(rtl_activity_analyzer PRIVATE include)
