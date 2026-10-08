@@ -8,14 +8,18 @@ For this project, a digital signal has a value of **0** or **1**. A **trace**
 records the values of several signals at successive samples. The program now
 measures switching activity: how often these sampled values change.
 
-## Current functionality: Stage 2
+## Current functionality: Stage 3
 
 Stage 1 reads and validates a CSV trace, storing the cycle numbers and signal
 values in memory. Its input rules and error handling are preserved.
 
 Stage 2 compares consecutive values for each signal. It prints the sample and
 signal counts, then a table of total, rising, and falling transitions and the
-activity ratio. Signals stay in CSV header order; they are not ranked or sorted.
+activity ratio. This original table keeps signals in CSV header order.
+
+Stage 3 adds a separate high-activity signal ranking after the original table.
+It ranks a copy of the results by activity ratio, highest first. Equal activity
+values keep their original signal order, and the original results are unchanged.
 
 The activity ratio is an educational, simplified sampled activity metric. It
 is not a complete professional RTL power model, and no power is calculated.
@@ -54,6 +58,23 @@ computes the ratio. It takes the validated trace by `const` reference, so it
 does not copy or modify the input. Each `SignalActivity` result starts with
 zero counts and a ratio of `0.0`.
 
+## Understanding high-activity ranking
+
+High switching activity means a signal changes frequently in the sampled trace.
+Ranking helps identify signals worth investigating first. This remains an
+educational switching-activity analyzer, not a professional power estimator.
+
+`rankByActivity` receives the results by `const` reference, makes a vector copy,
+and uses `std::stable_sort` on that copy. Its comparator is
+`left.activity_ratio > right.activity_ratio`, which puts higher ratios first.
+The comparison uses the stored ratios before display rounding.
+
+Unlike `std::sort`, `std::stable_sort` guarantees that equal activity values
+keep their input order. For the sample, `enable` and `data_valid` both have
+activity `0.400`, so `enable` stays first. There is no secondary ranking rule.
+The method returns the ranked copy, preserving the original CSV order for the
+Stage 2 table.
+
 ## Project structure
 
 ```text
@@ -77,10 +98,12 @@ rtl-activity-analyzer/
 - `TraceData.h` defines the data stored using standard-library vectors.
 - `TraceParser.h` declares the parser's public `parse` function.
 - `TraceParser.cpp` reads and validates the CSV file.
-- `ActivityAnalyzer.h` defines `SignalActivity` and declares `analyze`.
-- `ActivityAnalyzer.cpp` counts transitions and computes activity ratios.
-- `main.cpp` handles arguments, runs parsing and analysis, and prints results
-  or errors. Ratios are displayed with three decimal places.
+- `ActivityAnalyzer.h` defines `SignalActivity` and declares `analyze` and
+  `rankByActivity`.
+- `ActivityAnalyzer.cpp` counts transitions, computes activity ratios, and
+  ranks a copy of the results.
+- `main.cpp` handles arguments, runs parsing and analysis, and prints the
+  original table and ranking or errors. Ratios use three decimal places.
 - `sample_trace.csv` is a small example with six samples and four signals.
 - `.gitignore` keeps generated build files and local editor settings out of Git.
 
@@ -124,6 +147,14 @@ clk               5            3       2        1.000
 enable            2            1       1        0.400
 data_valid        2            1       1        0.400
 busy              1            1       0        0.200
+
+High-Activity Signal Ranking
+
+Rank  Signal            Activity  Transitions
+1     clk               1.000     5
+2     enable            0.400     2
+3     data_valid        0.400     2
+4     busy              0.200     1
 ```
 
 The command accepts exactly one file path. Use quotes around a path containing
@@ -182,23 +213,23 @@ For example, `signal_names[0]` is `clk`, `cycles[2]` is `2`, and
 - The entire trace is stored in memory.
 - The ratio describes changes between recorded samples; it cannot measure
   changes that happen between those samples.
-- There is no signal ranking, power estimation, VCD parsing, visualization,
-  or multithreading.
+- There is no power estimation, VCD parsing, visualization, or multithreading.
 - There is no automated test suite yet. Verification uses manual runs with
   the sample, constant signals, alternating signals, a single sample, multiple
-  signals, and invalid CSV inputs.
+  signals, equal and zero activity, ranking order, and invalid CSV inputs.
 
 ## Roadmap
 
 Implemented:
 
-- CSV parsing — **IMPLEMENTED**
-- Transition counting, including rising and falling transitions — **IMPLEMENTED**
-- Simplified switching activity calculation — **IMPLEMENTED**
+- CSV trace parsing — **IMPLEMENTED**
+- Transition counting — **IMPLEMENTED**
+- Rising/falling transition counting — **IMPLEMENTED**
+- Simplified switching activity ratio — **IMPLEMENTED**
+- High-activity signal ranking — **IMPLEMENTED**
 
 Possible future learning stages:
 
-- Signal ranking — **NOT IMPLEMENTED**
 - Simple relative power estimation — **NOT IMPLEMENTED**
 - Automated tests — **NOT IMPLEMENTED**
 - VCD parsing — **NOT IMPLEMENTED**
