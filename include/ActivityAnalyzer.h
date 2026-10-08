@@ -19,6 +19,10 @@ class ActivityAnalyzer {
 public:
     // Expects a trace validated by TraceParser; preserves the signal order.
     std::vector<SignalActivity> analyze(const TraceData& trace) const;
+
+    // Sorts a copy; equal activity ratios retain their input order.
+    std::vector<SignalActivity> rankByActivity(
+        const std::vector<SignalActivity>& activities) const;
 };
 
 #endif

@@ -1,5 +1,7 @@
 #include "ActivityAnalyzer.h"
 
+#include <algorithm>
+
 std::vector<SignalActivity> ActivityAnalyzer::analyze(const TraceData& trace) const {
     std::vector<SignalActivity> activities;
 
@@ -35,4 +37,16 @@ std::vector<SignalActivity> ActivityAnalyzer::analyze(const TraceData& trace) co
     }
 
     return activities;
+}
+
+std::vector<SignalActivity> ActivityAnalyzer::rankByActivity(
+    const std::vector<SignalActivity>& activities) const {
+    std::vector<SignalActivity> ranked_activities = activities;
+
+    std::stable_sort(ranked_activities.begin(), ranked_activities.end(),
+                     [](const SignalActivity& left, const SignalActivity& right) {
+                         return left.activity_ratio > right.activity_ratio;
+                     });
+
+    return ranked_activities;
 }

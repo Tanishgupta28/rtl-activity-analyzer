@@ -19,6 +19,7 @@ int main(int argc, char* argv[]) {
         const TraceData trace = parser.parse(argv[1]);
         const ActivityAnalyzer analyzer;
         const std::vector<SignalActivity> activities = analyzer.analyze(trace);
+        const std::vector<SignalActivity> ranked_activities = analyzer.rankByActivity(activities);
 
         std::cout << "Trace loaded successfully\n"
                   << "Samples: " << trace.cycles.size() << '\n'
@@ -45,6 +46,20 @@ int main(int argc, char* argv[]) {
                       << "  " << std::setw(6) << activity.rising_transitions
                       << "  " << std::setw(7) << activity.falling_transitions
                       << "  " << activity.activity_ratio << '\n';
+        }
+
+        std::cout << "\nHigh-Activity Signal Ranking\n\n"
+                  << std::setw(4) << "Rank"
+                  << "  " << std::setw(static_cast<int>(signal_width)) << "Signal"
+                  << "  " << std::setw(8) << "Activity"
+                  << "  Transitions\n";
+
+        for (std::size_t rank_index = 0; rank_index < ranked_activities.size(); ++rank_index) {
+            const SignalActivity& activity = ranked_activities[rank_index];
+            std::cout << std::setw(4) << rank_index + 1
+                      << "  " << std::setw(static_cast<int>(signal_width)) << activity.signal_name
+                      << "  " << std::setw(8) << activity.activity_ratio
+                      << "  " << activity.transitions << '\n';
         }
     } catch (const std::exception& error) {
         std::cerr << "Error: " << error.what() << '\n';
