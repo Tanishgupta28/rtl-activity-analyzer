@@ -11,3 +11,14 @@ add_executable(rtl_activity_analyzer
     src/ActivityAnalyzer.cpp
 )
 target_include_directories(rtl_activity_analyzer PRIVATE include)
+
+include(CTest)
+
+if(BUILD_TESTING)
+    add_executable(test_activity_analyzer
+        tests/test_activity_analyzer.cpp
+        src/ActivityAnalyzer.cpp
+    )
+    target_include_directories(test_activity_analyzer PRIVATE include)
+    add_test(NAME activity_analyzer COMMAND test_activity_analyzer)
+endif()
