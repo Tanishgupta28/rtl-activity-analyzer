@@ -8,7 +8,7 @@ For this project, a digital signal has a value of **0** or **1**. A **trace**
 records the values of several signals at successive samples. The program now
 measures switching activity: how often these sampled values change.
 
-## Current functionality: Stage 3
+## Current functionality: Stage 4
 
 Stage 1 reads and validates a CSV trace, storing the cycle numbers and signal
 values in memory. Its input rules and error handling are preserved.
@@ -20,6 +20,9 @@ activity ratio. This original table keeps signals in CSV header order.
 Stage 3 adds a separate high-activity signal ranking after the original table.
 It ranks a copy of the results by activity ratio, highest first. Equal activity
 values keep their original signal order, and the original results are unchanged.
+
+Stage 4 adds automated tests for `ActivityAnalyzer` using standard C++17 and
+CMake/CTest. The application's output and Stage 1–3 behavior are unchanged.
 
 The activity ratio is an educational, simplified sampled activity metric. It
 is not a complete professional RTL power model, and no power is calculated.
@@ -90,8 +93,10 @@ rtl-activity-analyzer/
 │   ├── TraceParser.cpp
 │   ├── ActivityAnalyzer.cpp
 │   └── main.cpp
-└── data/
-    └── sample_trace.csv
+├── data/
+│   └── sample_trace.csv
+└── tests/
+    └── test_activity_analyzer.cpp
 ```
 
 - `CMakeLists.txt` tells CMake which source files to compile and requires C++17.
@@ -105,6 +110,8 @@ rtl-activity-analyzer/
 - `main.cpp` handles arguments, runs parsing and analysis, and prints the
   original table and ranking or errors. Ratios use three decimal places.
 - `sample_trace.csv` is a small example with six samples and four signals.
+- `test_activity_analyzer.cpp` checks the production analyzer's transition
+  counts, activity ratios, descending ranking, and stable order for ties.
 - `.gitignore` keeps generated build files and local editor settings out of Git.
 
 ## Build on Linux
@@ -120,8 +127,8 @@ cmake --build .
 ```
 
 `cmake ..` reads the project configuration from the parent folder and generates
-build files. `cmake --build .` uses those files to compile the program. The
-generated files stay in `build/`, which Git ignores.
+build files. `cmake --build .` uses those files to compile the application and
+test executable. The generated files stay in `build/`, which Git ignores.
 
 ## Example execution
 
@@ -169,6 +176,46 @@ cmake --build build
 .\build\rtl_activity_analyzer.exe data\sample_trace.csv
 ```
 
+## Testing
+
+A **unit test** checks a small part of a program with known inputs and expected
+results. Here, the tests create valid traces in memory and call the real
+`ActivityAnalyzer::analyze` and `rankByActivity` methods. CMake compiles the
+existing `src/ActivityAnalyzer.cpp` into the test executable; the tests do not
+copy the analyzer's algorithm or need a CSV file or external testing framework.
+
+Automated tests make these checks repeatable and help catch regressions when
+code changes. They cover constant low/high signals, alternating and mixed
+signals, single low/high samples, descending ranking, and three tied signals
+whose original order must remain stable. They also check that total transitions
+equal rising plus falling transitions. Ratios use a small floating-point
+tolerance when compared with expected values.
+
+From the repository root, configure, build, and run the tests:
+
+```bash
+cmake -S . -B build
+cmake --build build
+ctest --test-dir build --output-on-failure
+```
+
+On Windows with MinGW, use `-G "MinGW Makefiles"` on the configure command, as
+shown above. `include(CTest)` enables testing and provides the `BUILD_TESTING`
+option, which defaults to `ON`. `add_test` registers the executable as the
+`activity_analyzer` test. CMake builds both executables; CTest runs the test and
+reports whether it passed. CTest does not build the project, so build first.
+`--output-on-failure` shows the test's messages if it fails.
+
+The test prints readable `PASS`/`FAIL` messages and returns exit code `0` when
+all checks pass or `1` when a check fails. To see every message directly, run
+`./build/test_activity_analyzer` on Linux or
+`.\build\test_activity_analyzer.exe` on Windows with MinGW.
+
+With CTest older than 3.20, run `ctest --output-on-failure` from inside `build/`
+instead of using `--test-dir`. For a multi-configuration generator such as
+Visual Studio, build with `--config Debug` and run CTest with `-C Debug`; the
+executables will be under `build/Debug/`.
+
 ## Example input and parser rules
 
 ```csv
@@ -214,9 +261,8 @@ For example, `signal_names[0]` is `clk`, `cycles[2]` is `2`, and
 - The ratio describes changes between recorded samples; it cannot measure
   changes that happen between those samples.
 - There is no power estimation, VCD parsing, visualization, or multithreading.
-- There is no automated test suite yet. Verification uses manual runs with
-  the sample, constant signals, alternating signals, a single sample, multiple
-  signals, equal and zero activity, ranking order, and invalid CSV inputs.
+- Automated tests cover `ActivityAnalyzer`. CSV parsing and command-line
+  behavior are still verified with manual runs.
 
 ## Roadmap
 
@@ -227,11 +273,11 @@ Implemented:
 - Rising/falling transition counting — **IMPLEMENTED**
 - Simplified switching activity ratio — **IMPLEMENTED**
 - High-activity signal ranking — **IMPLEMENTED**
+- Automated ActivityAnalyzer tests — **IMPLEMENTED**
 
 Possible future learning stages:
 
 - Simple relative power estimation — **NOT IMPLEMENTED**
-- Automated tests — **NOT IMPLEMENTED**
 - VCD parsing — **NOT IMPLEMENTED**
 - Optional visualization — **NOT IMPLEMENTED**
 - Multithreading — **NOT IMPLEMENTED**
